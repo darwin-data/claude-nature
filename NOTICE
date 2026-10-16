@@ -5,3 +5,10 @@ taken from claude-carbon.
 
 data/sites.json carries values of WRI Aqueduct 4.0 (https://www.wri.org/aqueduct),
 World Resources Institute, licensed CC BY 4.0.
+
+data/sites.json carries values of US EPA eGRID2023 rev2 (https://www.epa.gov/egrid),
+a US government work in the public domain.
+
+data/nature.json carries characterisation factors of ReCiPe 2016 v1.1
+(RIVM Report 2016-0104a, Huijbregts et al. 2017) and land-use intensities of
+Lovering et al. 2022, PLOS ONE 17(7): e0270155 (CC BY 4.0).

@@ -1,24 +1,31 @@
 # claude-nature
 
-The nature footprint of your Claude Code sessions: energy, climate and water. The tool
-reads each litre against the water stress of the basin where a data centre draws it.
+The nature footprint of your Claude Code sessions. The tool turns your token use into
+energy, then into the pressures that drive nature loss at each data centre: climate,
+water, pollution and land. It adds them up in one unit, species·yr, with ReCiPe 2016.
 
 ```
-claude-nature · all transcripts on disk · 656 sessions
+claude-nature · all transcripts on disk · 644 sessions
 
-  Tokens    20.6 B (97% cache reads)
-  Energy    916.5 kWh
-  Climate   263.0 kgCO₂e
-  Water     4848.3 L  (165.0 L cooling on site, 4683.3 L to make the electricity)
+  Tokens    20.8 B (97% cache reads)
+  Energy    922.3 kWh
+  Water     4.9 m³  (166.0 L cooling on site, 4.7 m³ to make the electricity)
+  Nature    7.8e-7 to 1.3e-6 species·yr, as if 53 to 86 m² of land lost all its species for a year
 
-  A litre does not weigh the same in every basin. Cooling water is drawn at the site:
+  If every request ran at one site:
 
-  Site                                                       Basin stress      Withdrawals / supply
-  AWS us-east-1, Ashburn, Virginia                           Low (<10%)                          6%
-  AWS Project Rainier, New Carlisle, Indiana                 High (40-80%)                      71%
-  Colossus 1, Memphis, Tennessee                             Low (<10%)                          0%
-  Google Cloud us-central1, Council Bluffs, Iowa (assumed)   Low (<10%)                          5%
-  Google Cloud us-west1, The Dalles, Oregon (assumed)        Low (<10%)                          1%
+  Site                Grid        CO₂e species·yr  Climate    Water  Pollution     Land   Basin stress
+  Ashburn VA          SRVC  249.5 kgCO₂e     7.8e-7      90%       3%         4%       3%   Low, 6% withdrawn
+  New Carlisle IN     RFCW  383.2 kgCO₂e     1.2e-6      90%       2%         5%       2%   High, 71% withdrawn
+  Memphis TN          SRTV  377.9 kgCO₂e     1.2e-6      90%       2%         5%       2%   Low, 0% withdrawn
+  Council Bluffs IA*  MROW  387.6 kgCO₂e     1.3e-6      86%       2%        10%       2%   Low, 5% withdrawn
+  The Dalles OR*      NWPP  265.8 kgCO₂e     8.6e-7      86%       3%         6%       4%   Low, 1% withdrawn
+
+  species·yr: species lost, integrated over time (ReCiPe 2016, ecosystem quality).
+  Basin stress: WRI Aqueduct 4.0 withdrawals over renewable supply, where cooling water is drawn.
+  * Assumed site. Anthropic does not publish how it splits requests between sites.
+  Order of magnitude only. See METHODOLOGY.md.
+  79 requests to non-Claude models are left out.
 ```
 
 ## Why water, and why the basin
@@ -32,14 +39,19 @@ exactly this: the local water stress score, with WRI Aqueduct as the reference.
 claude-nature keeps the energy model of
 [claude-carbon](https://github.com/gwittebolle/claude-carbon) and adds the nature side.
 
-| Pressure | Status |
-| --- | --- |
-| Climate change (CO₂e) | Yes, claude-carbon factors |
-| Water use, in litres | Yes, on site and off site |
-| Water use, against basin stress | Yes, WRI Aqueduct 4.0 at each candidate site |
-| Pollution (NOx and particles from on-site gas turbines) | Next |
-| Land use at the site | Next |
-| Resource extraction (hardware) | Next |
+| IPBES pressure | What the tool counts | Source |
+| --- | --- | --- |
+| Climate change | CO₂e of the grid that supplies each site | US EPA eGRID2023 |
+| Overexploitation | Water for cooling and for power plants | Jegham et al. 2025 |
+| Pollution | NOx and SO₂ of the grid: acidification and ozone | US EPA eGRID2023 |
+| Ecosystem use | Land of the generation mix, extraction included | Lovering et al. 2022 |
+| Invasive alien species | Not counted: no path for electricity | |
+
+ReCiPe 2016 converts each pressure into species·yr, and the report divides the total by the
+mean species density to give an area: the m² that would lose all their species for a
+year. The answer surprised us: at every site, climate is 86-90% of the total. For AI use,
+the nature footprint follows the carbon footprint. The local water signal stays in its own
+column, because no species number captures it yet.
 
 The five pressures are the drivers of nature loss that IPBES names. Darwin
 ([darwindata.io](https://darwindata.io)) measures them for company supply chains, and
@@ -82,7 +94,7 @@ Install the plugin to get `/nature-report` in Claude Code:
 | --- | --- |
 | `claude-nature report [--since YYYY-MM-DD] [--project TEXT] [--json]` | Totals over the transcripts on disk |
 | `claude-nature statusline` | One line for the status line (reads its JSON on stdin) |
-| `claude-nature sites` | The candidate sites, why each one is there, and its basin |
+| `claude-nature sites` | The candidate sites: grid, emissions and land per MWh, basin, and why each one is there |
 
 Claude Code deletes transcripts after about 30 days. The report covers what is still on
 disk. Nothing leaves your machine.
@@ -98,5 +110,8 @@ case. See [METHODOLOGY.md](METHODOLOGY.md) for every factor and its source.
 - Energy and CO₂e factors: [claude-carbon](https://github.com/gwittebolle/claude-carbon)
   by Gaëtan Wittebolle (MIT), from Jegham et al. 2025.
 - Water stress: [WRI Aqueduct 4.0](https://www.wri.org/aqueduct) (CC BY 4.0).
+- Grid emissions and mix: [US EPA eGRID2023](https://www.epa.gov/egrid) (public domain).
+- Land-use intensity: Lovering et al. 2022, PLOS ONE 17(7): e0270155.
+- Characterisation: ReCiPe 2016 v1.1, RIVM Report 2016-0104a.
 
 MIT licence.

@@ -1,0 +1,31 @@
+{
+  "recipe": {
+    "source": "ReCiPe 2016 v1.1, Hierarchist, RIVM Report 2016-0104a (Huijbregts et al. 2017). Country values for the United States where the report gives them.",
+    "climate_terrestrial_species_yr_per_kg_co2e": 2.8e-9,
+    "climate_freshwater_species_yr_per_kg_co2e": 7.7e-14,
+    "water_terrestrial_species_yr_per_m3": 5.2e-9,
+    "water_freshwater_species_yr_per_m3": 2.9e-12,
+    "acidification_species_yr_per_kg_nox": 7.71e-8,
+    "acidification_species_yr_per_kg_so2": 2.37e-7,
+    "ozone_species_yr_per_kg_nox": 4.65e-8,
+    "land_occupation_annual_crop_eq_per_m2_yr": 0.73,
+    "land_species_yr_per_m2_yr_annual_crop_eq": 8.88e-9,
+    "terrestrial_species_per_m2": 1.48e-8
+  },
+  "land_use_intensity": {
+    "source": "Lovering et al. 2022, PLOS ONE 17(7): e0270155, Table 1, median land-use intensity of electricity (ha/TWh/y), direct and indirect land use, extraction included.",
+    "ha_per_twh_yr": {
+      "coal": 1000,
+      "oil": 410,
+      "gas": 410,
+      "nuclear": 7.1,
+      "hydro": 650,
+      "biomass": 130,
+      "wind": 130,
+      "solar": 2000,
+      "geothermal": 45,
+      "other_fossil": 410,
+      "other": 410
+    }
+  }
+}
