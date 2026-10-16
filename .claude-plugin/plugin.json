@@ -1,8 +1,11 @@
 {
-  "name": "claude-nature",
+  "name": "nature-footprint",
   "version": "0.1.0",
-  "description": "The nature footprint of your Claude Code sessions: energy, climate, and water against basin water stress.",
-  "author": { "name": "Darwin", "url": "https://darwindata.io" },
+  "description": "The nature footprint of your Claude Code sessions, in species·yr: climate, water, pollution and land at each data centre.",
+  "author": {
+    "name": "Darwin",
+    "url": "https://darwindata.io"
+  },
   "homepage": "https://github.com/darwin-data/claude-nature",
   "license": "MIT"
 }

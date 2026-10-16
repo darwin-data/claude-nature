@@ -85,7 +85,7 @@ Install the plugin to get `/nature-report` in Claude Code:
 
 ```
 /plugin marketplace add darwin-data/claude-nature
-/plugin install claude-nature@claude-nature
+/plugin install nature-footprint@darwin-nature
 ```
 
 ## Commands
