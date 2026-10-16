@@ -1,4 +1,5 @@
 mod footprint;
+mod nature;
 mod sites;
 mod transcript;
 
@@ -11,6 +12,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use footprint::Factors;
+use nature::Nature;
 use sites::Sites;
 use transcript::{Filter, Summary, summarise, transcripts};
 
@@ -110,6 +112,12 @@ fn statusline(factors: &Factors, input: &str) -> String {
 }
 
 fn report_json(s: &Summary) -> serde_json::Value {
+    let nature = Nature::embedded();
+    let sites: Vec<_> = Sites::embedded()
+        .sites
+        .into_iter()
+        .map(|site| json!({ "site": &site, "footprint": nature.at_site(&site, &s.footprint) }))
+        .collect();
     json!({
         "sessions": s.sessions,
         "requests": s.requests,
@@ -120,14 +128,19 @@ fn report_json(s: &Summary) -> serde_json::Value {
             "output": s.tokens.output,
         },
         "energy_wh": s.footprint.energy_wh,
-        "co2e_g": s.footprint.co2e_g,
         "water_on_site_l": s.footprint.water_on_site_l,
         "water_off_site_l": s.footprint.water_off_site_l,
-        "sites": Sites::embedded().sites,
+        "sites": sites,
     })
 }
 
 fn print_report(s: &Summary, since: Option<&str>) {
+    let nature = Nature::embedded();
+    let sites = Sites::embedded().sites;
+    let at: Vec<_> = sites
+        .iter()
+        .map(|site| nature.at_site(site, &s.footprint))
+        .collect();
     let period = since.map_or("all transcripts on disk".to_owned(), |d| {
         format!("since {d}")
     });
@@ -142,20 +155,51 @@ fn print_report(s: &Summary, since: Option<&str>) {
         tokens(s.tokens.total())
     );
     println!("  Energy    {}", energy(s.footprint.energy_wh));
-    println!("  Climate   {}", co2e(s.footprint.co2e_g));
     println!(
-        "  Water     {}  ({} cooling on site, {} to make the electricity)\n",
+        "  Water     {}  ({} cooling on site, {} to make the electricity)",
         water(s.footprint.water_l()),
         water(s.footprint.water_on_site_l),
         water(s.footprint.water_off_site_l),
     );
+    let (lo, hi) = min_max(at.iter().map(|f| f.species_yr.total()));
+    let (lo_m2, hi_m2) = min_max(at.iter().map(|f| f.equivalent_m2_yr));
     println!(
-        "  A litre does not weigh the same in every basin. Cooling water is drawn at the site:"
+        "  Nature    {lo:.1e} to {hi:.1e} species·yr, as if {lo_m2:.0} to {hi_m2:.0} m² of land lost all its species for a year\n"
     );
-    print_site_table();
+    println!("  If every request ran at one site:\n");
     println!(
-        "\n  Anthropic does not publish how it splits requests between sites. Each row is a \"what if it all ran here\"."
+        "  {:<19} {:<5} {:>10} {:>10} {:>8} {:>8} {:>10} {:>8}   Basin stress",
+        "Site", "Grid", "CO₂e", "species·yr", "Climate", "Water", "Pollution", "Land"
     );
+    for (site, f) in sites.iter().zip(&at) {
+        let total = f.species_yr.total();
+        let share = |x: f64| {
+            if total > 0.0 {
+                format!("{:.0}%", 100.0 * x / total)
+            } else {
+                "-".into()
+            }
+        };
+        println!(
+            "  {:<19} {:<5} {:>10} {:>10.1e} {:>8} {:>8} {:>10} {:>8}   {}, {:.0}% withdrawn",
+            site.short,
+            site.grid.egrid_subregion,
+            co2e(f.co2e_kg * 1000.0),
+            total,
+            share(f.species_yr.climate_change),
+            share(f.species_yr.overexploitation),
+            share(f.species_yr.pollution),
+            share(f.species_yr.ecosystem_use),
+            stress_level(&site.aqueduct.bws_label),
+            site.aqueduct.bws_raw * 100.0,
+        );
+    }
+    println!();
+    println!("  species·yr: species lost, integrated over time (ReCiPe 2016, ecosystem quality).");
+    println!(
+        "  Basin stress: WRI Aqueduct 4.0 withdrawals over renewable supply, where cooling water is drawn."
+    );
+    println!("  * Assumed site. Anthropic does not publish how it splits requests between sites.");
     println!("  Order of magnitude only. See METHODOLOGY.md.");
     if s.excluded_requests > 0 {
         println!(
@@ -165,29 +209,42 @@ fn print_report(s: &Summary, since: Option<&str>) {
     }
 }
 
-fn print_sites() {
-    let sites = Sites::embedded();
-    print_site_table();
-    println!();
-    for site in &sites.sites {
-        println!("  {}: {}", site.id, site.why);
-    }
-    println!("\n  Source: {}", sites.source);
+/// "High (40-80%)" becomes "High": the share follows in the same cell.
+fn stress_level(label: &str) -> &str {
+    label.split(" (").next().unwrap_or(label)
 }
 
-fn print_site_table() {
+fn min_max(values: impl Iterator<Item = f64>) -> (f64, f64) {
+    values.fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), v| {
+        (lo.min(v), hi.max(v))
+    })
+}
+
+fn print_sites() {
+    let sites = Sites::embedded();
+    let nature = Nature::embedded();
     println!(
-        "\n  {:<58} {:<15} {:>22}",
-        "Site", "Basin stress", "Withdrawals / supply"
+        "\n  {:<19} {:<5} {:>10} {:>9} {:>9} {:>11}   Basin stress",
+        "Site", "Grid", "CO₂e/MWh", "NOx/MWh", "SO₂/MWh", "Land/MWh"
     );
-    for site in Sites::embedded().sites {
+    for site in &sites.sites {
         println!(
-            "  {:<58} {:<15} {:>21.0}%",
-            site.name,
-            site.aqueduct.bws_label,
-            site.aqueduct.bws_raw * 100.0
+            "  {:<19} {:<5} {:>7.0} kg {:>6.2} kg {:>6.2} kg {:>7.1} m²·yr   {}, {:.0}% withdrawn",
+            site.short,
+            site.grid.egrid_subregion,
+            site.grid.co2e_kg_per_mwh,
+            site.grid.nox_kg_per_mwh,
+            site.grid.so2_kg_per_mwh,
+            nature.land_m2_yr_per_mwh(site),
+            stress_level(&site.aqueduct.bws_label),
+            site.aqueduct.bws_raw * 100.0,
         );
     }
+    println!();
+    for site in &sites.sites {
+        println!("  {}: {}. {}", site.short, site.name, site.why);
+    }
+    println!("\n  Source: {}", sites.source);
 }
 
 fn tokens(n: u64) -> String {
@@ -217,7 +274,9 @@ fn co2e(g: f64) -> String {
 }
 
 fn water(l: f64) -> String {
-    if l >= 1.0 {
+    if l >= 1000.0 {
+        format!("{:.1} m³", l / 1000.0)
+    } else if l >= 1.0 {
         format!("{l:.1} L")
     } else {
         format!("{:.0} mL", l * 1000.0)
@@ -251,7 +310,9 @@ mod tests {
     fn units() {
         assert_eq!(water(0.25), "250 mL");
         assert_eq!(water(12.34), "12.3 L");
+        assert_eq!(water(4848.3), "4.8 m³");
         assert_eq!(co2e(1500.0), "1.5 kgCO₂e");
         assert_eq!(tokens(25_300_000_000), "25.3 B");
+        assert_eq!(stress_level("High (40-80%)"), "High");
     }
 }

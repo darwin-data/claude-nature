@@ -1,45 +1,175 @@
 {
-  "source": "WRI Aqueduct 4.0, baseline annual (Aqueduct40_waterrisk_download_Y2023M07D05, CC BY 4.0). Point-in-polygon at each site, see scripts/aqueduct_sites.sql.",
+  "source": "Basin: WRI Aqueduct 4.0, baseline annual (Aqueduct40_waterrisk_download_Y2023M07D05, CC BY 4.0), point-in-polygon at each site, see scripts/aqueduct_sites.sql. Grid: US EPA eGRID2023 rev2 (June 2025), metric workbook, sheet SRL23, see scripts/egrid_subregions.sql.",
   "sites": [
     {
       "id": "ashburn-va",
       "name": "AWS us-east-1, Ashburn, Virginia",
+      "short": "Ashburn VA",
       "lat": 39.0438,
       "lon": -77.4874,
       "why": "The AWS region whose grid intensity the energy factors use (Jegham et al. 2025).",
-      "aqueduct": { "pfaf_id": 731801, "bws_raw": 0.0558, "bws_score": 0.158, "bws_cat": 0, "bws_label": "Low (<10%)" }
+      "aqueduct": {
+        "pfaf_id": 731801,
+        "bws_raw": 0.0558,
+        "bws_score": 0.158,
+        "bws_cat": 0,
+        "bws_label": "Low (<10%)"
+      },
+      "grid": {
+        "egrid_subregion": "SRVC",
+        "co2e_kg_per_mwh": 270.49,
+        "nox_kg_per_mwh": 0.1279,
+        "so2_kg_per_mwh": 0.0689,
+        "mix": {
+          "coal": 0.105,
+          "oil": 0.001,
+          "gas": 0.393,
+          "nuclear": 0.399,
+          "hydro": 0.014,
+          "biomass": 0.021,
+          "wind": 0.005,
+          "solar": 0.06,
+          "geothermal": 0.0,
+          "other_fossil": 0.002,
+          "other": 0.001
+        }
+      }
     },
     {
       "id": "new-carlisle-in",
       "name": "AWS Project Rainier, New Carlisle, Indiana",
+      "short": "New Carlisle IN",
       "lat": 41.7003,
       "lon": -86.5097,
-      "why": "Trainium2 cluster that Amazon built for Anthropic (Amazon announcement, October 2025).",
-      "aqueduct": { "pfaf_id": 742829, "bws_raw": 0.7123, "bws_score": 3.832, "bws_cat": 3, "bws_label": "High (40-80%)" }
+      "why": "Trainium2 cluster that Amazon built for Anthropic (Amazon announcement, October 2025). Grid subregion assumed from the location.",
+      "aqueduct": {
+        "pfaf_id": 742829,
+        "bws_raw": 0.7123,
+        "bws_score": 3.832,
+        "bws_cat": 3,
+        "bws_label": "High (40-80%)"
+      },
+      "grid": {
+        "egrid_subregion": "RFCW",
+        "co2e_kg_per_mwh": 415.52,
+        "nox_kg_per_mwh": 0.1914,
+        "so2_kg_per_mwh": 0.1869,
+        "mix": {
+          "coal": 0.25,
+          "oil": 0.003,
+          "gas": 0.378,
+          "nuclear": 0.284,
+          "hydro": 0.01,
+          "biomass": 0.003,
+          "wind": 0.055,
+          "solar": 0.008,
+          "geothermal": 0.0,
+          "other_fossil": 0.007,
+          "other": 0.001
+        }
+      }
     },
     {
       "id": "memphis-tn",
       "name": "Colossus 1, Memphis, Tennessee",
+      "short": "Memphis TN",
       "lat": 35.0606,
       "lon": -90.1515,
-      "why": "Site Anthropic took in May 2026, as claude-carbon METHODOLOGY.md reports it.",
-      "aqueduct": { "pfaf_id": 742550, "bws_raw": 0.0034, "bws_score": 0.0, "bws_cat": 0, "bws_label": "Low (<10%)" }
+      "why": "Site Anthropic took in May 2026, as claude-carbon METHODOLOGY.md reports it. The on-site gas turbines are not in the grid figures.",
+      "aqueduct": {
+        "pfaf_id": 742550,
+        "bws_raw": 0.0034,
+        "bws_score": 0.0,
+        "bws_cat": 0,
+        "bws_label": "Low (<10%)"
+      },
+      "grid": {
+        "egrid_subregion": "SRTV",
+        "co2e_kg_per_mwh": 409.74,
+        "nox_kg_per_mwh": 0.1742,
+        "so2_kg_per_mwh": 0.1937,
+        "mix": {
+          "coal": 0.282,
+          "oil": 0.001,
+          "gas": 0.298,
+          "nuclear": 0.328,
+          "hydro": 0.076,
+          "biomass": 0.007,
+          "wind": 0.0,
+          "solar": 0.008,
+          "geothermal": 0.0,
+          "other_fossil": 0.0,
+          "other": 0.0
+        }
+      }
     },
     {
       "id": "council-bluffs-ia",
       "name": "Google Cloud us-central1, Council Bluffs, Iowa (assumed)",
+      "short": "Council Bluffs IA*",
       "lat": 41.221,
       "lon": -95.8608,
       "why": "Anthropic runs on Google Cloud TPUs (announcement, October 2025). The region is not published: this site is an assumption.",
-      "aqueduct": { "pfaf_id": 742951, "bws_raw": 0.0546, "bws_score": 0.128, "bws_cat": 0, "bws_label": "Low (<10%)" }
+      "aqueduct": {
+        "pfaf_id": 742951,
+        "bws_raw": 0.0546,
+        "bws_score": 0.128,
+        "bws_cat": 0,
+        "bws_label": "Low (<10%)"
+      },
+      "grid": {
+        "egrid_subregion": "MROW",
+        "co2e_kg_per_mwh": 420.28,
+        "nox_kg_per_mwh": 0.3225,
+        "so2_kg_per_mwh": 0.4064,
+        "mix": {
+          "coal": 0.352,
+          "oil": 0.001,
+          "gas": 0.131,
+          "nuclear": 0.078,
+          "hydro": 0.041,
+          "biomass": 0.007,
+          "wind": 0.376,
+          "solar": 0.012,
+          "geothermal": 0.0,
+          "other_fossil": 0.002,
+          "other": 0.001
+        }
+      }
     },
     {
       "id": "the-dalles-or",
       "name": "Google Cloud us-west1, The Dalles, Oregon (assumed)",
+      "short": "The Dalles OR*",
       "lat": 45.6321,
       "lon": -121.2015,
       "why": "Same as Council Bluffs: a Google Cloud TPU region, assumed.",
-      "aqueduct": { "pfaf_id": 782300, "bws_raw": 0.0059, "bws_score": 0.0, "bws_cat": 0, "bws_label": "Low (<10%)" }
+      "aqueduct": {
+        "pfaf_id": 782300,
+        "bws_raw": 0.0059,
+        "bws_score": 0.0,
+        "bws_cat": 0,
+        "bws_label": "Low (<10%)"
+      },
+      "grid": {
+        "egrid_subregion": "NWPP",
+        "co2e_kg_per_mwh": 288.16,
+        "nox_kg_per_mwh": 0.2576,
+        "so2_kg_per_mwh": 0.1216,
+        "mix": {
+          "coal": 0.164,
+          "oil": 0.002,
+          "gas": 0.248,
+          "nuclear": 0.031,
+          "hydro": 0.387,
+          "biomass": 0.01,
+          "wind": 0.116,
+          "solar": 0.031,
+          "geothermal": 0.007,
+          "other_fossil": 0.003,
+          "other": 0.001
+        }
+      }
     }
   ]
 }

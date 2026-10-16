@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 /// Candidate data centres for Claude inference, from `data/sites.json`.
@@ -11,10 +13,24 @@ pub struct Sites {
 pub struct Site {
     pub id: String,
     pub name: String,
+    /// Table label. A trailing `*` marks an assumed site.
+    pub short: String,
     pub lat: f64,
     pub lon: f64,
     pub why: String,
     pub aqueduct: Aqueduct,
+    pub grid: Grid,
+}
+
+/// US EPA eGRID2023 subregion that supplies the site. Rates are output emission
+/// rates in kg/MWh. `mix` is the share of net generation per source.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Grid {
+    pub egrid_subregion: String,
+    pub co2e_kg_per_mwh: f64,
+    pub nox_kg_per_mwh: f64,
+    pub so2_kg_per_mwh: f64,
+    pub mix: BTreeMap<String, f64>,
 }
 
 /// WRI Aqueduct 4.0 baseline water stress of the basin under the site.
