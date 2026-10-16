@@ -1,0 +1,45 @@
+{
+  "source": "WRI Aqueduct 4.0, baseline annual (Aqueduct40_waterrisk_download_Y2023M07D05, CC BY 4.0). Point-in-polygon at each site, see scripts/aqueduct_sites.sql.",
+  "sites": [
+    {
+      "id": "ashburn-va",
+      "name": "AWS us-east-1, Ashburn, Virginia",
+      "lat": 39.0438,
+      "lon": -77.4874,
+      "why": "The AWS region whose grid intensity the energy factors use (Jegham et al. 2025).",
+      "aqueduct": { "pfaf_id": 731801, "bws_raw": 0.0558, "bws_score": 0.158, "bws_cat": 0, "bws_label": "Low (<10%)" }
+    },
+    {
+      "id": "new-carlisle-in",
+      "name": "AWS Project Rainier, New Carlisle, Indiana",
+      "lat": 41.7003,
+      "lon": -86.5097,
+      "why": "Trainium2 cluster that Amazon built for Anthropic (Amazon announcement, October 2025).",
+      "aqueduct": { "pfaf_id": 742829, "bws_raw": 0.7123, "bws_score": 3.832, "bws_cat": 3, "bws_label": "High (40-80%)" }
+    },
+    {
+      "id": "memphis-tn",
+      "name": "Colossus 1, Memphis, Tennessee",
+      "lat": 35.0606,
+      "lon": -90.1515,
+      "why": "Site Anthropic took in May 2026, as claude-carbon METHODOLOGY.md reports it.",
+      "aqueduct": { "pfaf_id": 742550, "bws_raw": 0.0034, "bws_score": 0.0, "bws_cat": 0, "bws_label": "Low (<10%)" }
+    },
+    {
+      "id": "council-bluffs-ia",
+      "name": "Google Cloud us-central1, Council Bluffs, Iowa (assumed)",
+      "lat": 41.221,
+      "lon": -95.8608,
+      "why": "Anthropic runs on Google Cloud TPUs (announcement, October 2025). The region is not published: this site is an assumption.",
+      "aqueduct": { "pfaf_id": 742951, "bws_raw": 0.0546, "bws_score": 0.128, "bws_cat": 0, "bws_label": "Low (<10%)" }
+    },
+    {
+      "id": "the-dalles-or",
+      "name": "Google Cloud us-west1, The Dalles, Oregon (assumed)",
+      "lat": 45.6321,
+      "lon": -121.2015,
+      "why": "Same as Council Bluffs: a Google Cloud TPU region, assumed.",
+      "aqueduct": { "pfaf_id": 782300, "bws_raw": 0.0059, "bws_score": 0.0, "bws_cat": 0, "bws_label": "Low (<10%)" }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+data/factors.json carries the energy, CO2e and water factors of claude-carbon
+(https://github.com/gwittebolle/claude-carbon), MIT License,
+Copyright (c) Gaëtan Wittebolle. Its deduplication rule for transcripts is also
+taken from claude-carbon.
+
+data/sites.json carries values of WRI Aqueduct 4.0 (https://www.wri.org/aqueduct),
+World Resources Institute, licensed CC BY 4.0.

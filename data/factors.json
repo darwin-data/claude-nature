@@ -1,0 +1,14 @@
+{
+  "source": "claude-carbon METHODOLOGY.md (github.com/gwittebolle/claude-carbon, MIT), itself derived from Jegham et al. 2025, arXiv:2505.09598 v6. Read 2026-10-16.",
+  "grid_g_co2e_per_wh": 0.287,
+  "pue_included": 1.14,
+  "water_on_site_l_per_kwh": 0.18,
+  "water_off_site_l_per_kwh": 5.11,
+  "cache_read_factor": 0.08,
+  "families": {
+    "fable": { "input_g_per_mtok": 156, "output_g_per_mtok": 3304 },
+    "opus": { "input_g_per_mtok": 78, "output_g_per_mtok": 1652 },
+    "sonnet": { "input_g_per_mtok": 39, "output_g_per_mtok": 826 },
+    "haiku": { "input_g_per_mtok": 10, "output_g_per_mtok": 207 }
+  }
+}

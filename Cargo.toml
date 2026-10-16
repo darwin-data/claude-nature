@@ -1,0 +1,20 @@
+[package]
+name = "claude-nature"
+version = "0.1.0"
+edition = "2024"
+description = "The nature footprint of your Claude Code sessions: energy, climate, and water, read against the water stress of the basin each data centre draws from."
+license = "MIT"
+repository = "https://github.com/darwin-data/claude-nature"
+readme = "README.md"
+keywords = ["claude", "carbon", "water", "biodiversity", "footprint"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+strip = true
+lto = true
