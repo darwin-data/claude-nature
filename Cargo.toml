@@ -2,7 +2,7 @@
 name = "claude-nature"
 version = "0.1.0"
 edition = "2024"
-description = "The nature footprint of your Claude Code sessions: energy, climate, and water, read against the water stress of the basin each data centre draws from."
+description = "The nature footprint of your Claude Code sessions, in species·yr: climate, water, pollution and land at each data centre."
 license = "MIT"
 repository = "https://github.com/darwin-data/claude-nature"
 readme = "README.md"
