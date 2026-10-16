@@ -77,7 +77,15 @@ Add this to `~/.claude/settings.json`. If you already have a status line, call
 }
 ```
 
-It prints the current session, subagents included: `💧 3.8 L · 204.4 gCO₂e`.
+It prints the current session, subagents included:
+
+```
+⚡ 1.4 kWh · 💧 7.6 L · 410.7 gCO₂e ≈ 🚗 1.7 km · 🌱 0.08–0.13 PDF·m²·yr ≈ 1.7 A4 sheets
+```
+
+The PDF·m²·yr range runs over the candidate sites, as in the report. The two `≈` give an
+order of magnitude: kilometres in a typical petrol car, and a familiar area for the middle
+of the range. METHODOLOGY.md gives the sources.
 
 ### Slash command
 
