@@ -129,7 +129,27 @@ Source: US EPA eGRID2023 rev2 (June 2025), metric workbook, sheet SRL23
 | The Dalles, Oregon | NWPP | 288.16 | 0.2576 | 0.1216 |
 
 The per-site CO₂e replaces the single 0.287 kg/kWh of claude-carbon. The status line keeps
-0.287, because it shows no site.
+0.287 for its CO₂e, because that figure shows no site.
+
+### Status line equivalents
+
+The status line shows the nature footprint in PDF·m²·yr: species·yr over the mean
+terrestrial species density, 1.48e-8 species per m². This is the area that would lose all
+its species for one year. The range runs over the candidate sites, like the report.
+
+Two equivalents give an order of magnitude only:
+
+| Equivalent | Value | Source |
+| --- | --- | --- |
+| Car | 400 g CO₂ per mile, so 248.5 g per km | EPA, Greenhouse Gas Emissions from a Typical Passenger Vehicle |
+| A4 sheet | 0.0624 m² | ISO 216 |
+| Parking space | 12.5 m² | 2.5 × 5 m |
+| Tennis court | 260.8 m² | ITF doubles court |
+| Football pitch | 7,140 m² | FIFA Laws of the Game, 105 × 68 m |
+| Hectare | 10,000 m² | |
+
+The area equivalent uses the middle of the site range and the largest reference it fills
+at least once.
 
 ### Land
 

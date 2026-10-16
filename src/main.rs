@@ -104,11 +104,73 @@ fn statusline(factors: &Factors, input: &str) -> String {
     let mut files = vec![main.clone()];
     files.extend(transcripts(&main.with_extension("")));
     let s = summarise(factors, &files, &Filter::default());
+    let nature = Nature::embedded();
+    let (lo, hi) = min_max(
+        Sites::embedded()
+            .sites
+            .iter()
+            .map(|site| nature.at_site(site, &s.footprint).equivalent_m2_yr),
+    );
     format!(
-        "💧 {} · {}",
+        "⚡ {} · 💧 {} · {} ≈ 🚗 {} · 🌱 {} PDF·m²·yr ≈ {}",
+        energy(s.footprint.energy_wh),
         water(s.footprint.water_l()),
-        co2e(s.footprint.co2e_g)
+        co2e(s.footprint.co2e_g),
+        car_km(s.footprint.co2e_g),
+        range(lo, hi),
+        area((lo + hi) / 2.0),
     )
+}
+
+/// EPA, "Greenhouse Gas Emissions from a Typical Passenger Vehicle": about 400 g CO₂ per
+/// mile, so 400 / 1.609 g per km.
+/// <https://www.epa.gov/greenvehicles/greenhouse-gas-emissions-typical-passenger-vehicle>
+const CAR_G_CO2_PER_KM: f64 = 400.0 / 1.609_344;
+
+fn car_km(co2e_g: f64) -> String {
+    let km = co2e_g / CAR_G_CO2_PER_KM;
+    if km >= 10.0 {
+        format!("{km:.0} km")
+    } else {
+        format!("{km:.1} km")
+    }
+}
+
+/// Reference areas in m², smallest first. A4 sheet: ISO 216, 210 × 297 mm. Parking space:
+/// 2.5 × 5 m. Tennis court: ITF doubles court, 23.77 × 10.97 m. Football pitch: FIFA
+/// Laws of the Game, 105 × 68 m.
+const AREAS: [(f64, &str, &str); 5] = [
+    (0.210 * 0.297, "A4 sheet", "A4 sheets"),
+    (2.5 * 5.0, "parking space", "parking spaces"),
+    (23.77 * 10.97, "tennis court", "tennis courts"),
+    (105.0 * 68.0, "football pitch", "football pitches"),
+    (10_000.0, "hectare", "hectares"),
+];
+
+/// The largest reference area that `m2` fills at least once. An order of magnitude, so one
+/// value: the middle of the site range.
+fn area(m2: f64) -> String {
+    let (size, one, many) = AREAS
+        .iter()
+        .rev()
+        .find(|(size, _, _)| m2 >= *size)
+        .unwrap_or(&AREAS[0]);
+    let n = m2 / size;
+    let label = if n < 1.5 { one } else { many };
+    format!("{} {label}", range(n, n))
+}
+
+/// Two significant digits at most; one value when both bounds round the same.
+fn range(lo: f64, hi: f64) -> String {
+    let fmt = |x: f64| match x {
+        x if x >= 10.0 => format!("{x:.0}"),
+        x if x >= 1.0 => format!("{x:.1}"),
+        x if x >= 0.01 => format!("{x:.2}"),
+        x if x > 0.0 => format!("{x:.0e}"),
+        _ => "0".to_owned(),
+    };
+    let (a, b) = (fmt(lo), fmt(hi));
+    if a == b { a } else { format!("{a}–{b}") }
 }
 
 fn report_json(s: &Summary) -> serde_json::Value {
@@ -297,8 +359,10 @@ mod tests {
             &Factors::embedded(),
             &json!({ "transcript_path": path }).to_string(),
         );
-        assert!(line.starts_with("💧 "), "{line}");
-        assert!(line.contains("gCO₂e"), "{line}");
+        assert!(line.starts_with("⚡ "), "{line}");
+        assert!(line.contains("gCO₂e ≈ "), "{line}");
+        assert!(line.contains("≈ 🚗 "), "{line}");
+        assert!(line.contains(" PDF·m²·yr ≈ "), "{line}");
     }
 
     #[test]
@@ -314,5 +378,11 @@ mod tests {
         assert_eq!(co2e(1500.0), "1.5 kgCO₂e");
         assert_eq!(tokens(25_300_000_000), "25.3 B");
         assert_eq!(stress_level("High (40-80%)"), "High");
+        assert_eq!(car_km(248.5), "1.0 km");
+        assert_eq!(range(53.2, 86.4), "53–86");
+        assert_eq!(range(0.0, 0.0), "0");
+        assert_eq!(area(69.5), "5.6 parking spaces");
+        assert_eq!(area(0.0), "0 A4 sheet");
+        assert_eq!(area(300.0), "1.2 tennis court");
     }
 }
