@@ -72,7 +72,8 @@ fn main() -> Result<()> {
         Command::Statusline => {
             let mut input = String::new();
             std::io::stdin().read_to_string(&mut input)?;
-            println!("{}", statusline(&factors, &input));
+            let color = std::env::var_os("NO_COLOR").is_none();
+            println!("{}", statusline(&factors, &input, color));
         }
         Command::Sites => print_sites(),
     }
@@ -93,7 +94,7 @@ struct StatusInput {
 }
 
 /// The session's own transcript, plus its subagents' under `<session>/`.
-fn statusline(factors: &Factors, input: &str) -> String {
+fn statusline(factors: &Factors, input: &str, color: bool) -> String {
     let Some(path) = serde_json::from_str::<StatusInput>(input)
         .ok()
         .and_then(|i| i.transcript_path)
@@ -111,15 +112,29 @@ fn statusline(factors: &Factors, input: &str) -> String {
             .iter()
             .map(|site| nature.at_site(site, &s.footprint).equivalent_m2_yr),
     );
-    format!(
-        "⚡ {} · 💧 {} · {} ≈ 🚗 {} · 🌱 {} PDF·m²·yr ≈ {}",
-        energy(s.footprint.energy_wh),
-        water(s.footprint.water_l()),
-        co2e(s.footprint.co2e_g),
-        car_km(s.footprint.co2e_g),
-        range(lo, hi),
-        area((lo + hi) / 2.0),
-    )
+    let paint = |code: &str, text: String| {
+        if color {
+            format!("\x1b[{code}m{text}\x1b[0m")
+        } else {
+            text
+        }
+    };
+    let like = |text: String| paint("90", format!("≈ {text}"));
+    [
+        paint("93", format!("⚡ {}", energy(s.footprint.energy_wh))),
+        paint("96", format!("💧 {}", water(s.footprint.water_l()))),
+        format!(
+            "{} {}",
+            paint("37", format!("🏭 {}", co2e(s.footprint.co2e_g))),
+            like(format!("🚗 {}", car_km(s.footprint.co2e_g)))
+        ),
+        format!(
+            "{} {}",
+            paint("92", format!("🌱 {} PDF·m²·yr", range(lo, hi))),
+            like(area((lo + hi) / 2.0))
+        ),
+    ]
+    .join(&paint("37", "  ".to_owned()))
 }
 
 /// EPA, "Greenhouse Gas Emissions from a Typical Passenger Vehicle": about 400 g CO₂ per
@@ -140,24 +155,23 @@ fn car_km(co2e_g: f64) -> String {
 /// 2.5 × 5 m. Tennis court: ITF doubles court, 23.77 × 10.97 m. Football pitch: FIFA
 /// Laws of the Game, 105 × 68 m.
 const AREAS: [(f64, &str, &str); 5] = [
-    (0.210 * 0.297, "A4 sheet", "A4 sheets"),
-    (2.5 * 5.0, "parking space", "parking spaces"),
-    (23.77 * 10.97, "tennis court", "tennis courts"),
-    (105.0 * 68.0, "football pitch", "football pitches"),
-    (10_000.0, "hectare", "hectares"),
+    (0.210 * 0.297, "📄", "A4"),
+    (2.5 * 5.0, "🅿️", "parking spaces"),
+    (23.77 * 10.97, "🎾", "tennis courts"),
+    (105.0 * 68.0, "⚽", "football pitches"),
+    (10_000.0, "🌳", "ha"),
 ];
 
 /// The largest reference area that `m2` fills at least once. An order of magnitude, so one
 /// value: the middle of the site range.
 fn area(m2: f64) -> String {
-    let (size, one, many) = AREAS
+    let (size, icon, label) = AREAS
         .iter()
         .rev()
         .find(|(size, _, _)| m2 >= *size)
         .unwrap_or(&AREAS[0]);
     let n = m2 / size;
-    let label = if n < 1.5 { one } else { many };
-    format!("{} {label}", range(n, n))
+    format!("{icon} {} {label}", range(n, n))
 }
 
 /// Two significant digits at most; one value when both bounds round the same.
@@ -330,6 +344,8 @@ fn energy(wh: f64) -> String {
 fn co2e(g: f64) -> String {
     if g >= 1000.0 {
         format!("{:.1} kgCO₂e", g / 1000.0)
+    } else if g >= 100.0 {
+        format!("{g:.0} gCO₂e")
     } else {
         format!("{g:.1} gCO₂e")
     }
@@ -358,16 +374,18 @@ mod tests {
         let line = statusline(
             &Factors::embedded(),
             &json!({ "transcript_path": path }).to_string(),
+            false,
         );
         assert!(line.starts_with("⚡ "), "{line}");
-        assert!(line.contains("gCO₂e ≈ "), "{line}");
+        assert!(line.contains("gCO₂e ≈ 🚗 "), "{line}");
+        assert!(!line.contains('\x1b'), "{line}");
         assert!(line.contains("≈ 🚗 "), "{line}");
         assert!(line.contains(" PDF·m²·yr ≈ "), "{line}");
     }
 
     #[test]
     fn statusline_is_empty_without_a_transcript() {
-        assert_eq!(statusline(&Factors::embedded(), "{}"), "");
+        assert_eq!(statusline(&Factors::embedded(), "{}", true), "");
     }
 
     #[test]
@@ -381,8 +399,9 @@ mod tests {
         assert_eq!(car_km(248.5), "1.0 km");
         assert_eq!(range(53.2, 86.4), "53–86");
         assert_eq!(range(0.0, 0.0), "0");
-        assert_eq!(area(69.5), "5.6 parking spaces");
-        assert_eq!(area(0.0), "0 A4 sheet");
-        assert_eq!(area(300.0), "1.2 tennis court");
+        assert_eq!(area(69.5), "🅿️ 5.6 parking spaces");
+        assert_eq!(area(0.0), "📄 0 A4");
+        assert_eq!(area(300.0), "🎾 1.2 tennis courts");
+        assert_eq!(co2e(422.8), "423 gCO₂e");
     }
 }
