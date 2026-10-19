@@ -44,6 +44,38 @@ its totals, and more for long contexts. The same range applies here.
 
 The values live in `data/factors.json`. Keep them in step with claude-carbon.
 
+### Hardware manufacturing
+
+The energy factors count only the electricity. The tool adds the manufacture of the
+hardware (chips, servers, transport, end of life, data-centre building) as CO₂e per kWh
+of the same electricity:
+
+```
+embodied_co2e_g = energy_kwh * 40
+```
+
+| Source | How the value comes out | g/kWh |
+| --- | --- | ---: |
+| Schneider et al. 2025, arXiv:2502.01671, Table 1 | TPU v4i to v6e: embodied kgCO₂e over 6 years / lifetime kWh | 35-47 |
+| Elsworth et al. 2025, arXiv:2508.15734, Table 2 | Gemini prompt: Scope 1+3 0.010 g / 0.24 Wh | 42 |
+| Mistral AI, Carbone 4, ADEME 2025, Mistral Large 2 LCA | Hardware 11% against 85.5% for use, at 287 g/kWh | 37 |
+| NVIDIA HGX H100 PCF + host server (Luccioni et al. 2023) | 3,812 kg over 4 years at 10.2 kW, PUE 1.14 | 9 |
+| Luccioni et al. 2023, BLOOM, Table 3 | 11.2 t / 690 MWh | 16 |
+
+The three sources that cover a whole accelerator machine with measured energy agree on
+about 40 g/kWh. GPU servers come out lower, because an H100 draws more power per kg of
+hardware and because those studies leave out part of the machine. Anthropic serves on
+Google TPUs, AWS Trainium and NVIDIA GPUs, and does not publish the split. 40 g/kWh is the
+central value; the range is 9 to 47.
+
+At 287 g/kWh, this adds 14% to the operational CO₂e. The term does not depend on the site.
+It enters the climate pressure of each site with the grid CO₂e.
+
+Not converted: the water to make the chips (Mistral gives 5% of its total, a bottom-up
+fab estimate gives 100 times less) and the minerals (61% of Mistral's resource depletion).
+ReCiPe puts mineral scarcity in its resources endpoint, in USD, which does not add to
+species·yr.
+
 ## Water
 
 | Factor | Value | What it covers |
@@ -197,8 +229,9 @@ kilometres, so this precision is enough for a basin lookup. The values live in
 
 ## Not counted
 
-- Training, and the manufacture of the hardware. The mining for chips and servers is a
-  resource extraction pressure, and it is absent.
+- Training. A share of it belongs to each request, and no public source allocates it.
+- The water and the minerals of hardware manufacturing. Its CO₂e is counted (see
+  Hardware manufacturing).
 - The land of the data centre itself.
 - The on-site gas turbines at Memphis. The grid figures of the TVA subregion do not
   include them.

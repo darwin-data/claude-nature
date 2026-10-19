@@ -92,7 +92,7 @@ impl Nature {
     pub fn at_site(&self, site: &Site, usage: &Footprint) -> SiteFootprint {
         let r = &self.recipe;
         let mwh = usage.energy_wh / 1_000_000.0;
-        let co2e_kg = mwh * site.grid.co2e_kg_per_mwh;
+        let co2e_kg = mwh * site.grid.co2e_kg_per_mwh + usage.embodied_co2e_g / 1000.0;
         let nox_kg = mwh * site.grid.nox_kg_per_mwh;
         let so2_kg = mwh * site.grid.so2_kg_per_mwh;
         let water_m3 = usage.water_l() / 1000.0;
@@ -132,6 +132,7 @@ mod tests {
         Footprint {
             energy_wh: 1_000_000.0,
             co2e_g: 287_000.0,
+            embodied_co2e_g: 40_000.0,
             water_on_site_l: 180.0,
             water_off_site_l: 5110.0,
         }
@@ -162,9 +163,9 @@ mod tests {
         let sites = Sites::embedded();
         let site = sites.sites.iter().find(|s| s.id == "ashburn-va").unwrap();
         let fp = nature.at_site(site, &one_mwh());
-        assert!((fp.co2e_kg - 270.49).abs() < 1e-9);
+        assert!((fp.co2e_kg - (270.49 + 40.0)).abs() < 1e-9);
         assert!((fp.water_m3 - 5.29).abs() < 1e-9);
-        assert!((fp.species_yr.climate_change - 270.49 * (2.8e-9 + 7.7e-14)).abs() < 1e-18);
+        assert!((fp.species_yr.climate_change - 310.49 * (2.8e-9 + 7.7e-14)).abs() < 1e-18);
         assert!((fp.species_yr.overexploitation - 5.29 * (5.2e-9 + 2.9e-12)).abs() < 1e-18);
         assert!(
             (fp.species_yr.pollution - (0.1279 * (7.71e-8 + 4.65e-8) + 0.0689 * 2.37e-7)).abs()
