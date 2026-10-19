@@ -44,6 +44,38 @@ its totals, and more for long contexts. The same range applies here.
 
 The values live in `data/factors.json`. Keep them in step with claude-carbon.
 
+### Hardware manufacturing
+
+The energy factors count only the electricity. The tool adds the manufacture of the
+hardware (chips, servers, transport, end of life, data-centre building) as CO₂e per kWh
+of the same electricity:
+
+```
+embodied_co2e_g = energy_kwh * 40
+```
+
+| Source | How the value comes out | g/kWh |
+| --- | --- | ---: |
+| Schneider et al. 2025, arXiv:2502.01671, Table 1 | TPU v4i to v6e: embodied kgCO₂e over 6 years / lifetime kWh | 35-47 |
+| Elsworth et al. 2025, arXiv:2508.15734, Table 2 | Gemini prompt: Scope 1+3 0.010 g / 0.24 Wh | 42 |
+| Mistral AI, Carbone 4, ADEME 2025, Mistral Large 2 LCA | Hardware 11% against 85.5% for use, at 287 g/kWh | 37 |
+| NVIDIA HGX H100 PCF + host server (Luccioni et al. 2023) | 3,812 kg over 4 years at 10.2 kW, PUE 1.14 | 9 |
+| Luccioni et al. 2023, BLOOM, Table 3 | 11.2 t / 690 MWh | 16 |
+
+The three sources that cover a whole accelerator machine with measured energy agree on
+about 40 g/kWh. GPU servers come out lower, because an H100 draws more power per kg of
+hardware and because those studies leave out part of the machine. Anthropic serves on
+Google TPUs, AWS Trainium and NVIDIA GPUs, and does not publish the split. 40 g/kWh is the
+central value; the range is 9 to 47.
+
+At 287 g/kWh, this adds 14% to the operational CO₂e. The term does not depend on the site.
+It enters the climate pressure of each site with the grid CO₂e.
+
+Not converted: the water to make the chips (Mistral gives 5% of its total, a bottom-up
+fab estimate gives 100 times less) and the minerals (61% of Mistral's resource depletion).
+ReCiPe puts mineral scarcity in its resources endpoint, in USD, which does not add to
+species·yr.
+
 ## Water
 
 | Factor | Value | What it covers |
@@ -77,9 +109,49 @@ What the table does not mean:
   between sites. Each row is a separate case.
 - It does not apply to the off-site litres. Power plants sit on the grid, often in another
   basin than the data centre.
-- It is not a characterisation factor. The tool does not multiply litres by stress to give
-  one number, because a weighted index (AWARE, for example) needs a choice of method that
-  this version does not make.
+- It is not a characterisation factor. The species number uses the Pfister factor of the
+  watershed instead (see Water at the watershed). AWARE is not used: it is a scarcity
+  index for water use, and it has no path to species·yr.
+
+## Water at the watershed
+
+ReCiPe 2016 builds its terrestrial water factor on Pfister et al. 2009 (RIVM 2016-0104,
+section 10.4.2): the share of plant growth that water limits, per m³ of precipitation
+(`CF_EQ`, PDF·m²·yr/m³). The US country factor, 5.2e-9 species·yr/m³, is a CF_EQ of
+0.3514 m²·yr/m³ once divided by 1.48e-8 species/m². The tool takes the CF_EQ of the
+Pfister watershed that holds each site and scales the US factor by the ratio:
+
+```
+terrestrial_factor_site = 5.2e-9 * CF_EQ_site / 0.3514
+```
+
+| Site | Pfister WSI | CF_EQ (m²·yr/m³) | Multiplier | Aqueduct stress |
+| --- | ---: | ---: | ---: | --- |
+| Ashburn VA | 0.191 | 0.165 | 0.47 | Low, 6% |
+| New Carlisle IN | 0.035 | 0.108 | 0.31 | High, 71% |
+| Memphis TN | 0.011 | 0.143 | 0.41 | Low, 0% |
+| Council Bluffs IA | 0.039 | 0.355 | 1.01 | Low, 5% |
+| The Dalles OR | 0.026 | 0.430 | 1.22 | Low, 1% |
+
+Source: Pfister's Google Earth layer `Impact_factors_Water_LCA_pfister_et_al.kmz` (ETH
+Zurich, read from the Wayback Machine, capture of 2015-09-10), point in polygon at each
+site with `scripts/pfister_sites.py`.
+
+Three choices:
+
+- The multiplier applies to cooling water only. Power plants draw their water across the
+  grid, often in another watershed, so that water keeps the US factor.
+- The freshwater factor (Hanafiah et al. 2011) stays at the US value. It is about 1,000
+  times smaller, and ReCiPe gives no value for the Great Lakes or the Columbia.
+- The water stress index (WSI) is not used. In Pfister 2009 it drives human health only,
+  so scaling the ecosystem factor by WSI would not match ReCiPe.
+
+What it changes: almost nothing. Cooling is 3% of the litres; 97% is power-plant water.
+The species number moves by less than 1%. It also shows a limit: CF_EQ measures how much
+plants depend on water, and it does not see withdrawals. New Carlisle, the only site in a
+High stress basin under Aqueduct, gets the lowest multiplier. The two datasets disagree on
+stress too: Pfister's watersheds are large and its data is from 1995. That is why the
+Aqueduct column stays next to the species number.
 
 ## Nature footprint
 
@@ -175,11 +247,11 @@ Transformation (the change from natural land) is not counted.
 
 ### What the result shows
 
-On the author's 30 days, climate change is 86-90% of the nature footprint at every site,
-pollution 4-10%, water 2-3% and land 2-4%. For AI use, the nature footprint follows the
-carbon footprint. The local water signal does not appear in the species number, because
-the ReCiPe water factor is a country average. That is why the basin stress stays a separate
-column.
+On the author's 30 days, climate change is 87-91% of the nature footprint at every site
+(hardware manufacturing included), pollution 3-9%, water 2-3% and land 2-4%. For AI use, the nature footprint follows the
+carbon footprint. The local water signal does not appear in the species number: the
+watershed factor follows plant dependence on water, and cooling is a small share of the
+litres. That is why the basin stress stays a separate column.
 
 ## Candidate sites
 
@@ -197,14 +269,13 @@ kilometres, so this precision is enough for a basin lookup. The values live in
 
 ## Not counted
 
-- Training, and the manufacture of the hardware. The mining for chips and servers is a
-  resource extraction pressure, and it is absent.
+- Training. A share of it belongs to each request, and no public source allocates it.
+- The water and the minerals of hardware manufacturing. Its CO₂e is counted (see
+  Hardware manufacturing).
 - The land of the data centre itself.
 - The on-site gas turbines at Memphis. The grid figures of the TVA subregion do not
   include them.
 - Invasive alien species. No characterisation path exists for electricity.
 - Human health (ReCiPe has a separate endpoint for it, in DALY).
-- Water regionalised at the basin. The next step is the Pfister water stress index per
-  basin, which is the method behind the ReCiPe country factor.
 - The chat and Cowork tabs of the Claude app. They run on Anthropic's servers and write
   no transcript on your machine.
