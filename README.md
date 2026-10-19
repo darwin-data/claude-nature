@@ -76,7 +76,8 @@ curl -fsSL https://raw.githubusercontent.com/darwin-data/claude-nature/main/inst
 claude-nature install-statusline
 ```
 
-With Rust: `cargo install --git https://github.com/darwin-data/claude-nature`.
+With Homebrew: `brew install darwin-data/tap/claude-nature`. With Rust:
+`cargo install --git https://github.com/darwin-data/claude-nature`.
 
 ### Status line
 
