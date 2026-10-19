@@ -478,22 +478,26 @@ fn print_sites() {
     let sites = Sites::embedded();
     let nature = Nature::embedded();
     println!(
-        "\n  {:<19} {:<5} {:>10} {:>9} {:>9} {:>11}   Basin stress",
-        "Site", "Grid", "CO₂e/MWh", "NOx/MWh", "SO₂/MWh", "Land/MWh"
+        "\n  {:<19} {:<5} {:>10} {:>9} {:>9} {:>11} {:>8}   Basin stress",
+        "Site", "Grid", "CO₂e/MWh", "NOx/MWh", "SO₂/MWh", "Land/MWh", "Pfister"
     );
     for site in &sites.sites {
         println!(
-            "  {:<19} {:<5} {:>7.0} kg {:>6.2} kg {:>6.2} kg {:>7.1} m²·yr   {}, {:.0}% withdrawn",
+            "  {:<19} {:<5} {:>7.0} kg {:>6.2} kg {:>6.2} kg {:>7.1} m²·yr {:>7.2}×   {}, {:.0}% withdrawn",
             site.short,
             site.grid.egrid_subregion,
             site.grid.co2e_kg_per_mwh,
             site.grid.nox_kg_per_mwh,
             site.grid.so2_kg_per_mwh,
             nature.land_m2_yr_per_mwh(site),
+            site.pfister.multiplier,
             stress_level(&site.aqueduct.bws_label),
             site.aqueduct.bws_raw * 100.0,
         );
     }
+    println!(
+        "\n  Pfister: ecosystem water factor of the watershed over the US value (Pfister et al. 2009)."
+    );
     println!();
     for site in &sites.sites {
         println!("  {}: {}. {}", site.short, site.name, site.why);

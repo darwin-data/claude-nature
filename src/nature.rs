@@ -96,13 +96,20 @@ impl Nature {
         let nox_kg = mwh * site.grid.nox_kg_per_mwh;
         let so2_kg = mwh * site.grid.so2_kg_per_mwh;
         let water_m3 = usage.water_l() / 1000.0;
+        // Cooling water is drawn in the watershed of the site, so its terrestrial factor
+        // takes the Pfister multiplier. Power-plant water is drawn across the grid and keeps
+        // the US factor. The freshwater factor has no value for every basin: US for both.
+        let on_site_m3 = usage.water_on_site_l / 1000.0;
+        let off_site_m3 = usage.water_off_site_l / 1000.0;
+        let terrestrial = r.water_terrestrial_species_yr_per_m3;
         let land_m2_yr = mwh * self.land_m2_yr_per_mwh(site);
         let species_yr = Species {
             climate_change: co2e_kg
                 * (r.climate_terrestrial_species_yr_per_kg_co2e
                     + r.climate_freshwater_species_yr_per_kg_co2e),
-            overexploitation: water_m3
-                * (r.water_terrestrial_species_yr_per_m3 + r.water_freshwater_species_yr_per_m3),
+            overexploitation: on_site_m3 * terrestrial * site.pfister.multiplier
+                + off_site_m3 * terrestrial
+                + water_m3 * r.water_freshwater_species_yr_per_m3,
             pollution: nox_kg
                 * (r.acidification_species_yr_per_kg_nox + r.ozone_species_yr_per_kg_nox)
                 + so2_kg * r.acidification_species_yr_per_kg_so2,
@@ -166,7 +173,8 @@ mod tests {
         assert!((fp.co2e_kg - (270.49 + 40.0)).abs() < 1e-9);
         assert!((fp.water_m3 - 5.29).abs() < 1e-9);
         assert!((fp.species_yr.climate_change - 310.49 * (2.8e-9 + 7.7e-14)).abs() < 1e-18);
-        assert!((fp.species_yr.overexploitation - 5.29 * (5.2e-9 + 2.9e-12)).abs() < 1e-18);
+        let water = 0.18 * 5.2e-9 * site.pfister.multiplier + 5.11 * 5.2e-9 + 5.29 * 2.9e-12;
+        assert!((fp.species_yr.overexploitation - water).abs() < 1e-18);
         assert!(
             (fp.species_yr.pollution - (0.1279 * (7.71e-8 + 4.65e-8) + 0.0689 * 2.37e-7)).abs()
                 < 1e-18

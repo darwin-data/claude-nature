@@ -1,5 +1,5 @@
 {
-  "source": "Basin: WRI Aqueduct 4.0, baseline annual (Aqueduct40_waterrisk_download_Y2023M07D05, CC BY 4.0), point-in-polygon at each site, see scripts/aqueduct_sites.sql. Grid: US EPA eGRID2023 rev2 (June 2025), metric workbook, sheet SRL23, see scripts/egrid_subregions.sql.",
+  "source": "Basin: WRI Aqueduct 4.0, baseline annual (Aqueduct40_waterrisk_download_Y2023M07D05, CC BY 4.0), point-in-polygon at each site, see scripts/aqueduct_sites.sql. Grid: US EPA eGRID2023 rev2 (June 2025), metric workbook, sheet SRL23, see scripts/egrid_subregions.sql. Pfister: Pfister et al. 2009, Environ. Sci. Technol. 43:4098, Google Earth layer Impact_factors_Water_LCA_pfister_et_al.kmz (ETH ESD, Wayback Machine 2015-09-10), watershed polygon that holds each site, see scripts/pfister_sites.py. multiplier = cf_eq / 0.3514, the US value behind ReCiPe 2016 (5.2e-9 species·yr/m³ / 1.48e-8 species/m²).",
   "sites": [
     {
       "id": "ashburn-va",
@@ -14,6 +14,11 @@
         "bws_score": 0.158,
         "bws_cat": 0,
         "bws_label": "Low (<10%)"
+      },
+      "pfister": {
+        "cf_eq_m2_yr_per_m3": 0.1649,
+        "wsi": 0.1907,
+        "multiplier": 0.469
       },
       "grid": {
         "egrid_subregion": "SRVC",
@@ -49,6 +54,11 @@
         "bws_cat": 3,
         "bws_label": "High (40-80%)"
       },
+      "pfister": {
+        "cf_eq_m2_yr_per_m3": 0.1081,
+        "wsi": 0.0348,
+        "multiplier": 0.308
+      },
       "grid": {
         "egrid_subregion": "RFCW",
         "co2e_kg_per_mwh": 415.52,
@@ -82,6 +92,11 @@
         "bws_score": 0.0,
         "bws_cat": 0,
         "bws_label": "Low (<10%)"
+      },
+      "pfister": {
+        "cf_eq_m2_yr_per_m3": 0.1434,
+        "wsi": 0.0108,
+        "multiplier": 0.408
       },
       "grid": {
         "egrid_subregion": "SRTV",
@@ -117,6 +132,11 @@
         "bws_cat": 0,
         "bws_label": "Low (<10%)"
       },
+      "pfister": {
+        "cf_eq_m2_yr_per_m3": 0.3546,
+        "wsi": 0.0385,
+        "multiplier": 1.009
+      },
       "grid": {
         "egrid_subregion": "MROW",
         "co2e_kg_per_mwh": 420.28,
@@ -150,6 +170,11 @@
         "bws_score": 0.0,
         "bws_cat": 0,
         "bws_label": "Low (<10%)"
+      },
+      "pfister": {
+        "cf_eq_m2_yr_per_m3": 0.4295,
+        "wsi": 0.0262,
+        "multiplier": 1.222
       },
       "grid": {
         "egrid_subregion": "NWPP",
