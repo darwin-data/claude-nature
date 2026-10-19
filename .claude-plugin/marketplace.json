@@ -1,12 +1,12 @@
 {
-  "name": "darwin-nature",
+  "name": "darwin-data",
   "owner": {
     "name": "Darwin",
     "url": "https://darwindata.io"
   },
   "plugins": [
     {
-      "name": "nature-footprint",
+      "name": "lamarck",
       "source": "./",
       "description": "The nature footprint of your Claude Code sessions, in species·yr: climate, water, pollution and land at each data centre."
     }

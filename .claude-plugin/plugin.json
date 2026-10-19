@@ -1,11 +1,11 @@
 {
-  "name": "nature-footprint",
-  "version": "0.2.0",
+  "name": "lamarck",
+  "version": "0.3.0",
   "description": "The nature footprint of your Claude Code sessions, in species·yr: climate, water, pollution and land at each data centre.",
   "author": {
     "name": "Darwin",
     "url": "https://darwindata.io"
   },
-  "homepage": "https://github.com/darwin-data/claude-nature",
+  "homepage": "https://github.com/darwin-data/lamarck",
   "license": "MIT"
 }

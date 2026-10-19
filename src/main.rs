@@ -260,9 +260,9 @@ fn metrics(fp: &Footprint, paint: Paint) -> String {
     .join("  ")
 }
 
-/// Points Claude Code at `claude-nature statusline`. An existing status line command is
+/// Points Claude Code at `lamarck statusline`. An existing status line command is
 /// kept and passed to `--wrap`, so it still shows on the first line. The old file is
-/// copied to `settings.json.bak-claude-nature` first.
+/// copied to `settings.json.bak-lamarck` first.
 fn install_statusline() -> Result<()> {
     let path = projects_dir()?
         .parent()
@@ -275,16 +275,9 @@ fn install_statusline() -> Result<()> {
         .pointer("/statusLine/command")
         .and_then(|c| c.as_str())
         .map(str::to_owned);
-    if current
-        .as_deref()
-        .is_some_and(|c| c.contains("claude-nature"))
-    {
-        println!("The status line already calls claude-nature: nothing to do.");
+    let Some(command) = statusline_command(current.as_deref()) else {
+        println!("The status line already calls lamarck: nothing to do.");
         return Ok(());
-    }
-    let command = match &current {
-        Some(old) => format!("claude-nature statusline --wrap {}", shell_quote(old)),
-        None => "claude-nature statusline".to_owned(),
     };
     let object = settings
         .as_object_mut()
@@ -294,7 +287,7 @@ fn install_statusline() -> Result<()> {
         json!({ "type": "command", "command": command, "padding": 0 }),
     );
     if path.exists() {
-        std::fs::copy(&path, path.with_extension("json.bak-claude-nature"))?;
+        std::fs::copy(&path, path.with_extension("json.bak-lamarck"))?;
     }
     std::fs::write(&path, serde_json::to_string_pretty(&settings)? + "\n")?;
     println!("Status line set in {}:\n  {command}", path.display());
@@ -302,6 +295,19 @@ fn install_statusline() -> Result<()> {
         println!("Your previous status line stays on the first line.");
     }
     Ok(())
+}
+
+/// The status line command to install over `current`, or `None` if it already calls
+/// lamarck. A command of the old name, `claude-nature`, moves to the new one in place.
+fn statusline_command(current: Option<&str>) -> Option<String> {
+    match current {
+        Some(old) if old.contains("lamarck") => None,
+        Some(old) if old.contains("claude-nature statusline") => {
+            Some(old.replace("claude-nature statusline", "lamarck statusline"))
+        }
+        Some(old) => Some(format!("lamarck statusline --wrap {}", shell_quote(old))),
+        None => Some("lamarck statusline".to_owned()),
+    }
 }
 
 fn shell_quote(text: &str) -> String {
@@ -392,7 +398,7 @@ fn print_report(s: &Summary, since: Option<&str>) {
     let period = since.map_or("all transcripts on disk".to_owned(), |d| {
         format!("since {d}")
     });
-    println!("claude-nature · {period} · {} sessions\n", s.sessions);
+    println!("lamarck · {period} · {} sessions\n", s.sessions);
     let cache_share = if s.tokens.total() > 0 {
         100.0 * s.tokens.cache_read as f64 / s.tokens.total() as f64
     } else {
@@ -589,6 +595,19 @@ mod tests {
         assert_eq!(area(0.0), "📄 0 A4");
         assert_eq!(area(300.0), "🎾 1.2 tennis courts");
         assert_eq!(co2e(422.8), "423 gCO₂e");
+        assert_eq!(
+            statusline_command(None).as_deref(),
+            Some("lamarck statusline")
+        );
+        assert_eq!(statusline_command(Some("lamarck statusline")), None);
+        assert_eq!(
+            statusline_command(Some("claude-nature statusline --wrap 'ccline'")).as_deref(),
+            Some("lamarck statusline --wrap 'ccline'")
+        );
+        assert_eq!(
+            statusline_command(Some("ccline")).as_deref(),
+            Some("lamarck statusline --wrap 'ccline'")
+        );
         assert_eq!(shell_quote("it's"), r"'it'\''s'");
     }
 }

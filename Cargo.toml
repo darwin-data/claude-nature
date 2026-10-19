@@ -1,10 +1,10 @@
 [package]
-name = "claude-nature"
-version = "0.2.0"
+name = "lamarck"
+version = "0.3.0"
 edition = "2024"
 description = "The nature footprint of your Claude Code sessions, in species·yr: climate, water, pollution and land at each data centre."
 license = "MIT"
-repository = "https://github.com/darwin-data/claude-nature"
+repository = "https://github.com/darwin-data/lamarck"
 readme = "README.md"
 keywords = ["claude", "carbon", "water", "biodiversity", "footprint"]
 categories = ["command-line-utilities"]
