@@ -40,7 +40,7 @@ impl Factors {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, serde::Serialize, Deserialize)]
 pub struct Tokens {
     pub input: u64,
     pub cache_write: u64,
@@ -51,6 +51,12 @@ pub struct Tokens {
 impl Tokens {
     pub fn total(&self) -> u64 {
         self.input + self.cache_write + self.cache_read + self.output
+    }
+
+    /// Share of the prompt side read from the prompt cache, the cheapest way to send tokens.
+    pub fn cache_share(&self) -> Option<f64> {
+        let prompt = self.input + self.cache_write + self.cache_read;
+        (prompt > 0).then(|| self.cache_read as f64 / prompt as f64)
     }
 }
 
