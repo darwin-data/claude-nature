@@ -5,6 +5,8 @@
   "water_on_site_l_per_kwh": 0.18,
   "water_off_site_l_per_kwh": 5.11,
   "cache_read_factor": 0.08,
+  "embodied_g_co2e_per_kwh": 40,
+  "embodied_source": "Hardware manufacturing, transport, end of life and data-centre construction, per kWh of facility electricity. 40 g/kWh, range 9 (GPU server, 4 years) to 47 (TPU v5e). Schneider et al. 2025, arXiv:2502.01671, Table 1: TPU embodied kgCO2e over 6 years / lifetime kWh = 35-47 g/kWh. Elsworth et al. 2025, arXiv:2508.15734, Table 2: Scope 1+3 0.010 g per 0.24 Wh prompt = 42 g/kWh. Mistral AI, Carbone 4 and ADEME 2025, Mistral Large 2 LCA: hardware 11% against 85.5% for use, so 37 g/kWh at 287 g/kWh.",
   "families": {
     "fable": { "input_g_per_mtok": 156, "output_g_per_mtok": 3304 },
     "opus": { "input_g_per_mtok": 78, "output_g_per_mtok": 1652 },

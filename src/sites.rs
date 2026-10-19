@@ -19,7 +19,19 @@ pub struct Site {
     pub lon: f64,
     pub why: String,
     pub aqueduct: Aqueduct,
+    pub pfister: Pfister,
     pub grid: Grid,
+}
+
+/// Pfister et al. 2009 watershed under the site. `cf_eq` is the terrestrial ecosystem
+/// factor (PDF·m²·yr/m³) that ReCiPe 2016 builds its water factor on; `multiplier` is
+/// `cf_eq` over the US value, 0.3514. `wsi` is shown, not used: in Pfister 2009 it only
+/// drives human health.
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct Pfister {
+    pub cf_eq_m2_yr_per_m3: f64,
+    pub wsi: f64,
+    pub multiplier: f64,
 }
 
 /// US EPA eGRID2023 subregion that supplies the site. Rates are output emission

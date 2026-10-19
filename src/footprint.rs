@@ -10,6 +10,7 @@ pub struct Factors {
     pub water_on_site_l_per_kwh: f64,
     pub water_off_site_l_per_kwh: f64,
     pub cache_read_factor: f64,
+    pub embodied_g_co2e_per_kwh: f64,
     pub families: BTreeMap<String, FamilyFactors>,
 }
 
@@ -40,7 +41,7 @@ impl Factors {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, serde::Serialize, Deserialize)]
 pub struct Tokens {
     pub input: u64,
     pub cache_write: u64,
@@ -51,6 +52,12 @@ pub struct Tokens {
 impl Tokens {
     pub fn total(&self) -> u64 {
         self.input + self.cache_write + self.cache_read + self.output
+    }
+
+    /// Share of the prompt side read from the prompt cache, the cheapest way to send tokens.
+    pub fn cache_share(&self) -> Option<f64> {
+        let prompt = self.input + self.cache_write + self.cache_read;
+        (prompt > 0).then(|| self.cache_read as f64 / prompt as f64)
     }
 }
 
@@ -66,7 +73,10 @@ impl AddAssign for Tokens {
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Footprint {
     pub energy_wh: f64,
+    /// Operational: the electricity, at the grid intensity of the energy factors.
     pub co2e_g: f64,
+    /// Manufacturing of the hardware, per kWh used. It does not depend on the site.
+    pub embodied_co2e_g: f64,
     pub water_on_site_l: f64,
     pub water_off_site_l: f64,
 }
@@ -75,12 +85,17 @@ impl Footprint {
     pub fn water_l(&self) -> f64 {
         self.water_on_site_l + self.water_off_site_l
     }
+
+    pub fn total_co2e_g(&self) -> f64 {
+        self.co2e_g + self.embodied_co2e_g
+    }
 }
 
 impl AddAssign for Footprint {
     fn add_assign(&mut self, other: Self) {
         self.energy_wh += other.energy_wh;
         self.co2e_g += other.co2e_g;
+        self.embodied_co2e_g += other.embodied_co2e_g;
         self.water_on_site_l += other.water_on_site_l;
         self.water_off_site_l += other.water_off_site_l;
     }
@@ -101,6 +116,7 @@ pub fn footprint(factors: &Factors, family: &str, tokens: Tokens) -> Footprint {
     Footprint {
         energy_wh,
         co2e_g,
+        embodied_co2e_g: kwh * factors.embodied_g_co2e_per_kwh,
         water_on_site_l: kwh * factors.water_on_site_l_per_kwh,
         water_off_site_l: kwh * factors.water_off_site_l_per_kwh,
     }
@@ -133,6 +149,7 @@ mod tests {
             },
         );
         assert!((fp.co2e_g - 826.0).abs() < 1e-9);
+        assert!((fp.embodied_co2e_g - 826.0 / 287.0 * 40.0).abs() < 1e-9);
         assert!((fp.energy_wh - 826.0 / 0.287).abs() < 1e-6);
         let kwh = 826.0 / 0.287 / 1000.0;
         assert!((fp.water_l() - kwh * (0.18 + 5.11)).abs() < 1e-9);

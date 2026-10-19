@@ -1,20 +1,23 @@
+mod cache;
 mod footprint;
 mod nature;
 mod sites;
 mod transcript;
 
-use std::io::Read;
-use std::path::PathBuf;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command as Process, Stdio};
+use std::time::SystemTime;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use serde::Deserialize;
 use serde_json::json;
 
-use footprint::Factors;
+use footprint::{Factors, Footprint};
 use nature::Nature;
 use sites::Sites;
-use transcript::{Filter, Summary, summarise, transcripts};
+use transcript::{Filter, Scan, Summary, summarise, summarise_records, transcripts};
 
 /// The nature footprint of your Claude Code sessions: energy, climate and water,
 /// read against the water stress of the basin each data centre draws from.
@@ -39,8 +42,19 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
-    /// One line for the Claude Code status line. Reads the status line JSON on stdin.
-    Statusline,
+    /// Lines for the Claude Code status line: this session, then today. Reads the status
+    /// line JSON on stdin.
+    Statusline {
+        /// Run this status line command first, with the same stdin, and print its output
+        /// above. This is how `install-statusline` keeps an existing status line.
+        #[arg(long)]
+        wrap: Option<String>,
+        /// Leave out the line for today.
+        #[arg(long)]
+        no_today: bool,
+    },
+    /// Adds the status line to Claude Code settings. An existing status line stays on top.
+    InstallStatusline,
     /// The candidate data centres and the water stress of their basins.
     Sites,
 }
@@ -69,12 +83,22 @@ fn main() -> Result<()> {
                 print_report(&summary, since.as_deref());
             }
         }
-        Command::Statusline => {
+        Command::Statusline { wrap, no_today } => {
             let mut input = String::new();
             std::io::stdin().read_to_string(&mut input)?;
+            if let Some(command) = wrap {
+                let above = run_wrapped(&command, &input);
+                if !above.is_empty() {
+                    println!("{above}");
+                }
+            }
             let color = std::env::var_os("NO_COLOR").is_none();
-            println!("{}", statusline(&factors, &input, color));
+            let lines = statusline(&factors, &input, color, !no_today);
+            if !lines.is_empty() {
+                println!("{lines}");
+            }
         }
+        Command::InstallStatusline => install_statusline()?,
         Command::Sites => print_sites(),
     }
     Ok(())
@@ -93,8 +117,30 @@ struct StatusInput {
     transcript_path: Option<String>,
 }
 
-/// The session's own transcript, plus its subagents' under `<session>/`.
-fn statusline(factors: &Factors, input: &str, color: bool) -> String {
+/// Runs a status line command with the same stdin, and returns its output without the
+/// final newline. A command that fails prints nothing: the nature lines still show.
+fn run_wrapped(command: &str, input: &str) -> String {
+    let Ok(mut child) = Process::new("sh")
+        .args(["-c", command])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return String::new();
+    };
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(input.as_bytes());
+    }
+    child
+        .wait_with_output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim_end().to_owned())
+        .unwrap_or_default()
+}
+
+/// The session's own transcript plus its subagents' under `<session>/`, then, if `today`,
+/// every transcript of the same projects directory written since local midnight.
+fn statusline(factors: &Factors, input: &str, color: bool, today: bool) -> String {
     let Some(path) = serde_json::from_str::<StatusInput>(input)
         .ok()
         .and_then(|i| i.transcript_path)
@@ -104,39 +150,163 @@ fn statusline(factors: &Factors, input: &str, color: bool) -> String {
     let main = PathBuf::from(&path);
     let mut files = vec![main.clone()];
     files.extend(transcripts(&main.with_extension("")));
-    let s = summarise(factors, &files, &Filter::default());
+    let scans: Vec<Scan> = files.iter().map(|f| cache::scan_cached(f)).collect();
+    let records = || scans.iter().flat_map(|s| &s.records);
+    let session = summarise_records(factors, records(), &Filter::default());
+    let turn = scans[0].last_prompt.as_ref().map(|since| {
+        let filter = Filter {
+            since: Some(since.clone()),
+            ..Filter::default()
+        };
+        summarise_records(factors, records(), &filter).footprint
+    });
+    let paint = Paint(color);
+    let mut extras = Vec::new();
+    if let Some(turn) = turn {
+        extras.push(format!("↳ last turn +{}", co2e(turn.total_co2e_g())));
+    }
+    if let Some(share) = session.tokens.cache_share() {
+        extras.push(format!("♻️ {:.0}% cache", share * 100.0));
+    }
+    let mut out = metrics(&session.footprint, paint);
+    if !extras.is_empty() {
+        out.push_str("  ");
+        out.push_str(&paint.grey(extras.join(" · ")));
+    }
+    if today
+        && let Some(projects) = main.parent().and_then(Path::parent)
+        && let Some(day) = today_summary(factors, projects)
+        && day.requests > 0
+    {
+        out.push('\n');
+        out.push_str(&paint.grey("📅 today ".to_owned()));
+        out.push_str(&metrics(&day.footprint, paint));
+        let sessions = if day.sessions == 1 {
+            "session"
+        } else {
+            "sessions"
+        };
+        out.push_str(&paint.grey(format!("  {} {sessions}", day.sessions)));
+    }
+    out
+}
+
+/// Every request since local midnight, in the transcripts written since then.
+fn today_summary(factors: &Factors, projects: &Path) -> Option<Summary> {
+    let midnight = jiff::Zoned::now().start_of_day().ok()?.timestamp();
+    let since = SystemTime::from(midnight);
+    let files: Vec<PathBuf> = transcripts(projects)
+        .into_iter()
+        .filter(|f| {
+            std::fs::metadata(f)
+                .and_then(|m| m.modified())
+                .is_ok_and(|t| t >= since)
+        })
+        .collect();
+    cache::prune();
+    let scans: Vec<Scan> = files.iter().map(|f| cache::scan_cached(f)).collect();
+    let filter = Filter {
+        since: Some(midnight.to_string()),
+        ..Filter::default()
+    };
+    Some(summarise_records(
+        factors,
+        scans.iter().flat_map(|s| &s.records),
+        &filter,
+    ))
+}
+
+#[derive(Clone, Copy)]
+struct Paint(bool);
+
+impl Paint {
+    fn code(self, code: &str, text: String) -> String {
+        if self.0 {
+            format!("\x1b[{code}m{text}\x1b[0m")
+        } else {
+            text
+        }
+    }
+
+    fn grey(self, text: String) -> String {
+        self.code("90", text)
+    }
+}
+
+/// Energy, water, CO₂e and nature, each in its own colour, with grey equivalents.
+fn metrics(fp: &Footprint, paint: Paint) -> String {
     let nature = Nature::embedded();
     let (lo, hi) = min_max(
         Sites::embedded()
             .sites
             .iter()
-            .map(|site| nature.at_site(site, &s.footprint).equivalent_m2_yr),
+            .map(|site| nature.at_site(site, fp).equivalent_m2_yr),
     );
-    let paint = |code: &str, text: String| {
-        if color {
-            format!("\x1b[{code}m{text}\x1b[0m")
-        } else {
-            text
-        }
-    };
-    let like = |text: String| paint("90", format!("≈ {text}"));
+    let like = |text: String| paint.grey(format!("≈ {text}"));
     [
-        paint("93", format!("⚡ {}", energy(s.footprint.energy_wh))),
-        paint("96", format!("💧 {}", water(s.footprint.water_l()))),
+        paint.code("93", format!("⚡ {}", energy(fp.energy_wh))),
+        paint.code("96", format!("💧 {}", water(fp.water_l()))),
         format!(
             "{} {}",
-            paint("37", format!("🏭 {}", co2e(s.footprint.co2e_g))),
-            like(format!("🚗 {}", car_km(s.footprint.co2e_g)))
+            paint.code("37", format!("🏭 {}", co2e(fp.total_co2e_g()))),
+            like(format!("🚗 {}", car_km(fp.total_co2e_g())))
         ),
         format!(
             "{} {}",
-            paint("92", format!("🌱 {} PDF·m²·yr", range(lo, hi))),
+            paint.code("92", format!("🌱 {} PDF·m²·yr", range(lo, hi))),
             like(area((lo + hi) / 2.0))
         ),
     ]
-    .join(&paint("37", "  ".to_owned()))
+    .join("  ")
 }
 
+/// Points Claude Code at `claude-nature statusline`. An existing status line command is
+/// kept and passed to `--wrap`, so it still shows on the first line. The old file is
+/// copied to `settings.json.bak-claude-nature` first.
+fn install_statusline() -> Result<()> {
+    let path = projects_dir()?
+        .parent()
+        .context("no Claude Code config directory")?
+        .join("settings.json");
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|_| "{}".to_owned());
+    let mut settings: serde_json::Value =
+        serde_json::from_str(&text).with_context(|| format!("{} is not JSON", path.display()))?;
+    let current = settings
+        .pointer("/statusLine/command")
+        .and_then(|c| c.as_str())
+        .map(str::to_owned);
+    if current
+        .as_deref()
+        .is_some_and(|c| c.contains("claude-nature"))
+    {
+        println!("The status line already calls claude-nature: nothing to do.");
+        return Ok(());
+    }
+    let command = match &current {
+        Some(old) => format!("claude-nature statusline --wrap {}", shell_quote(old)),
+        None => "claude-nature statusline".to_owned(),
+    };
+    let object = settings
+        .as_object_mut()
+        .context("settings.json is not a JSON object")?;
+    object.insert(
+        "statusLine".to_owned(),
+        json!({ "type": "command", "command": command, "padding": 0 }),
+    );
+    if path.exists() {
+        std::fs::copy(&path, path.with_extension("json.bak-claude-nature"))?;
+    }
+    std::fs::write(&path, serde_json::to_string_pretty(&settings)? + "\n")?;
+    println!("Status line set in {}:\n  {command}", path.display());
+    if current.is_some() {
+        println!("Your previous status line stays on the first line.");
+    }
+    Ok(())
+}
+
+fn shell_quote(text: &str) -> String {
+    format!("'{}'", text.replace('\'', r"'\''"))
+}
 /// EPA, "Greenhouse Gas Emissions from a Typical Passenger Vehicle": about 400 g CO₂ per
 /// mile, so 400 / 1.609 g per km.
 /// <https://www.epa.gov/greenvehicles/greenhouse-gas-emissions-typical-passenger-vehicle>
@@ -204,6 +374,8 @@ fn report_json(s: &Summary) -> serde_json::Value {
             "output": s.tokens.output,
         },
         "energy_wh": s.footprint.energy_wh,
+        "co2e_operational_g": s.footprint.co2e_g,
+        "co2e_embodied_g": s.footprint.embodied_co2e_g,
         "water_on_site_l": s.footprint.water_on_site_l,
         "water_off_site_l": s.footprint.water_off_site_l,
         "sites": sites,
@@ -231,6 +403,12 @@ fn print_report(s: &Summary, since: Option<&str>) {
         tokens(s.tokens.total())
     );
     println!("  Energy    {}", energy(s.footprint.energy_wh));
+    println!(
+        "  CO₂e      {}  ({} electricity at 287 g/kWh, {} hardware manufacturing)",
+        co2e(s.footprint.total_co2e_g()),
+        co2e(s.footprint.co2e_g),
+        co2e(s.footprint.embodied_co2e_g),
+    );
     println!(
         "  Water     {}  ({} cooling on site, {} to make the electricity)",
         water(s.footprint.water_l()),
@@ -300,22 +478,26 @@ fn print_sites() {
     let sites = Sites::embedded();
     let nature = Nature::embedded();
     println!(
-        "\n  {:<19} {:<5} {:>10} {:>9} {:>9} {:>11}   Basin stress",
-        "Site", "Grid", "CO₂e/MWh", "NOx/MWh", "SO₂/MWh", "Land/MWh"
+        "\n  {:<19} {:<5} {:>10} {:>9} {:>9} {:>11} {:>8}   Basin stress",
+        "Site", "Grid", "CO₂e/MWh", "NOx/MWh", "SO₂/MWh", "Land/MWh", "Pfister"
     );
     for site in &sites.sites {
         println!(
-            "  {:<19} {:<5} {:>7.0} kg {:>6.2} kg {:>6.2} kg {:>7.1} m²·yr   {}, {:.0}% withdrawn",
+            "  {:<19} {:<5} {:>7.0} kg {:>6.2} kg {:>6.2} kg {:>7.1} m²·yr {:>7.2}×   {}, {:.0}% withdrawn",
             site.short,
             site.grid.egrid_subregion,
             site.grid.co2e_kg_per_mwh,
             site.grid.nox_kg_per_mwh,
             site.grid.so2_kg_per_mwh,
             nature.land_m2_yr_per_mwh(site),
+            site.pfister.multiplier,
             stress_level(&site.aqueduct.bws_label),
             site.aqueduct.bws_raw * 100.0,
         );
     }
+    println!(
+        "\n  Pfister: ecosystem water factor of the watershed over the US value (Pfister et al. 2009)."
+    );
     println!();
     for site in &sites.sites {
         println!("  {}: {}. {}", site.short, site.name, site.why);
@@ -375,17 +557,21 @@ mod tests {
             &Factors::embedded(),
             &json!({ "transcript_path": path }).to_string(),
             false,
+            false,
         );
         assert!(line.starts_with("⚡ "), "{line}");
         assert!(line.contains("gCO₂e ≈ 🚗 "), "{line}");
         assert!(!line.contains('\x1b'), "{line}");
+        assert!(line.contains("↳ last turn +"), "{line}");
+        assert!(line.contains("% cache"), "{line}");
+        assert!(!line.contains('\n'), "{line}");
         assert!(line.contains("≈ 🚗 "), "{line}");
         assert!(line.contains(" PDF·m²·yr ≈ "), "{line}");
     }
 
     #[test]
     fn statusline_is_empty_without_a_transcript() {
-        assert_eq!(statusline(&Factors::embedded(), "{}", true), "");
+        assert_eq!(statusline(&Factors::embedded(), "{}", true, true), "");
     }
 
     #[test]
@@ -403,5 +589,6 @@ mod tests {
         assert_eq!(area(0.0), "📄 0 A4");
         assert_eq!(area(300.0), "🎾 1.2 tennis courts");
         assert_eq!(co2e(422.8), "423 gCO₂e");
+        assert_eq!(shell_quote("it's"), r"'it'\''s'");
     }
 }
