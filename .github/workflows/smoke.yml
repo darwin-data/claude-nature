@@ -13,15 +13,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: install.sh from main, binary from the latest release
-        run: curl -fsSL https://raw.githubusercontent.com/darwin-data/claude-nature/main/install.sh | sh
+        run: curl -fsSL https://raw.githubusercontent.com/darwin-data/lamarck/main/install.sh | sh
       - name: Run it
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          claude-nature --version
-          claude-nature sites
+          lamarck --version
+          lamarck sites
           dir="$RUNNER_TEMP/claude/projects/demo"
           mkdir -p "$dir"
           cp tests/fixtures/projects/-tmp-demo/sess-a.jsonl "$dir/s.jsonl"
-          line=$(printf '{"transcript_path":"%s"}' "$dir/s.jsonl" | NO_COLOR=1 claude-nature statusline --no-today)
+          line=$(printf '{"transcript_path":"%s"}' "$dir/s.jsonl" | NO_COLOR=1 lamarck statusline --no-today)
           echo "$line"
           case "$line" in *PDF*) ;; *) exit 1 ;; esac

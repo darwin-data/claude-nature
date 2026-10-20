@@ -1,11 +1,11 @@
-# claude-nature
+# Lamarck
 
 The nature footprint of your Claude Code sessions. The tool turns your token use into
 energy, then into the pressures that drive nature loss at each data centre: climate,
 water, pollution and land. It adds them up in one unit, species·yr, with ReCiPe 2016.
 
 ```
-claude-nature · all transcripts on disk · 597 sessions
+lamarck · all transcripts on disk · 597 sessions
 
   Tokens    18.2 B (97% cache reads)
   Energy    819.3 kWh
@@ -37,7 +37,7 @@ litre drawn from a basin that uses 71% of it competes with farms, towns and rive
 TNFD guidance for the Technology and Communications sector asks data centres to report
 exactly this: the local water stress score, with WRI Aqueduct as the reference.
 
-claude-nature keeps the energy model of
+lamarck keeps the energy model of
 [claude-carbon](https://github.com/gwittebolle/claude-carbon) and adds the nature side.
 
 | IPBES pressure | What the tool counts | Source |
@@ -63,27 +63,27 @@ this tool applies the same reading to one developer's AI use.
 In Claude Code, the plugin does everything: it installs the binary and adds the status line.
 
 ```
-/plugin marketplace add darwin-data/claude-nature
-/plugin install nature-footprint@darwin-nature
-/nature-footprint:setup
+/plugin marketplace add darwin-data/lamarck
+/plugin install lamarck@darwin-data
+/lamarck:setup
 ```
 
 From a terminal, the same in two commands. No Rust needed: the script downloads the release
 binary for macOS or Linux and checks its SHA-256.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/darwin-data/claude-nature/main/install.sh | sh
-claude-nature install-statusline
+curl -fsSL https://raw.githubusercontent.com/darwin-data/lamarck/main/install.sh | sh
+lamarck install-statusline
 ```
 
-With Homebrew: `brew install darwin-data/tap/claude-nature`. With Rust:
-`cargo install --git https://github.com/darwin-data/claude-nature`.
+With Homebrew: `brew install darwin-data/tap/lamarck`. With Rust:
+`cargo install --git https://github.com/darwin-data/lamarck`.
 
 ### Status line
 
-`claude-nature install-statusline` sets the status line in `~/.claude/settings.json` and
-copies the old file to `settings.json.bak-claude-nature`. If you already have a status line,
-it stays on the first line: claude-nature runs it through `--wrap`.
+`lamarck install-statusline` sets the status line in `~/.claude/settings.json` and
+copies the old file to `settings.json.bak-lamarck`. If you already have a status line,
+it stays on the first line: lamarck runs it through `--wrap`.
 
 ```
 ⚡ 2.3 kWh  💧 12.3 L  🏭 670 gCO₂e ≈ 🚗 2.7 km  🌱 0.13–0.22 PDF·m²·yr ≈ 📄 2.8 A4  ↳ last turn +199 gCO₂e · ♻️ 97% cache
@@ -99,22 +99,22 @@ it stays on the first line: claude-nature runs it through `--wrap`.
   middle of the range. METHODOLOGY.md gives the sources.
 - Each metric has its own colour, and the equivalents are grey. Set `NO_COLOR` to get plain
   text.
-- A day of transcripts is about 100 MB. claude-nature keeps a scan of each file in
-  `~/.cache/claude-nature` and re-reads only the files that changed: about 65 ms per call.
+- A day of transcripts is about 100 MB. lamarck keeps a scan of each file in
+  `~/.cache/lamarck` and re-reads only the files that changed: about 65 ms per call.
 
 ### Slash command
 
-The plugin adds `/nature-footprint:nature-report` (the full report) and
-`/nature-footprint:setup` (install and status line).
+The plugin adds `/lamarck:report` (the full report) and
+`/lamarck:setup` (install and status line).
 
 ## Commands
 
 | Command | Output |
 | --- | --- |
-| `claude-nature report [--since YYYY-MM-DD] [--project TEXT] [--json]` | Totals over the transcripts on disk |
-| `claude-nature statusline [--wrap COMMAND] [--no-today]` | The status line: session, then today (reads its JSON on stdin) |
-| `claude-nature install-statusline` | Sets the status line in Claude Code settings, and keeps the existing one |
-| `claude-nature sites` | The candidate sites: grid, emissions and land per MWh, basin, and why each one is there |
+| `lamarck report [--since YYYY-MM-DD] [--project TEXT] [--json]` | Totals over the transcripts on disk |
+| `lamarck statusline [--wrap COMMAND] [--no-today]` | The status line: session, then today (reads its JSON on stdin) |
+| `lamarck install-statusline` | Sets the status line in Claude Code settings, and keeps the existing one |
+| `lamarck sites` | The candidate sites: grid, emissions and land per MWh, basin, and why each one is there |
 
 Claude Code deletes transcripts after about 30 days. The report covers what is still on
 disk. Nothing leaves your machine.
@@ -133,5 +133,12 @@ case. See [METHODOLOGY.md](METHODOLOGY.md) for every factor and its source.
 - Grid emissions and mix: [US EPA eGRID2023](https://www.epa.gov/egrid) (public domain).
 - Land-use intensity: Lovering et al. 2022, PLOS ONE 17(7): e0270155.
 - Characterisation: ReCiPe 2016 v1.1, RIVM Report 2016-0104a.
+
+## Name
+
+Jean-Baptiste de Lamarck (1744–1829) was a French naturalist. In 1802 he was one of the first
+to use the word *biology*, and Darwin cited him in *On the Origin of Species*. Until v0.3.0
+the tool was named `claude-nature`: `lamarck install-statusline` moves an old status line to
+the new name.
 
 MIT licence.
